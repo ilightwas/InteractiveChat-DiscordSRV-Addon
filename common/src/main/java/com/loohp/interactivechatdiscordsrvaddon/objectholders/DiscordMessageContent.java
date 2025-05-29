@@ -31,6 +31,7 @@ import github.scarsz.discordsrv.dependencies.jda.api.requests.restaction.Message
 import github.scarsz.discordsrv.objects.MessageFormat;
 
 import java.awt.Color;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -54,6 +55,7 @@ public class DiscordMessageContent {
     private String footer;
     private String footerImageUrl;
     private Map<String, byte[]> attachments;
+    private OffsetDateTime timestamp;
 
     public DiscordMessageContent(String authorName, String authorIconUrl, List<String> description, List<String> imageUrl, int color, Map<String, byte[]> attachments) {
         this.authorName = authorName;
@@ -104,6 +106,7 @@ public class DiscordMessageContent {
             this.thumbnail = embed.getThumbnail().getUrl();
         }
         this.attachments = new HashMap<>();
+        this.timestamp = embed.getTimestamp();
     }
 
     public DiscordMessageContent(MessageFormat messageFormat) {
@@ -247,12 +250,20 @@ public class DiscordMessageContent {
         attachments.clear();
     }
 
+    public OffsetDateTime getTimestamp() {
+        return this.timestamp;
+    }
+
+    public void setTimestamp(OffsetDateTime timestamp) {
+        this.timestamp = timestamp;
+    }
+
     @SuppressWarnings("deprecation")
     public RestAction<List<Message>> toJDAMessageRestAction(TextChannel channel) {
         Map<MessageAction, Set<String>> actions = new LinkedHashMap<>();
         Set<String> rootAttachments = new HashSet<>();
         rootAttachments.add(authorIconUrl);
-        EmbedBuilder embed = new EmbedBuilder().setAuthor(authorName, null, authorIconUrl).setColor(color).setThumbnail(thumbnail).setTitle(title);
+        EmbedBuilder embed = new EmbedBuilder().setAuthor(authorName, null, authorIconUrl).setColor(color).setThumbnail(thumbnail).setTitle(title).setTimestamp(timestamp);
         for (Field field : fields) {
             embed.addField(field);
         }
@@ -325,7 +336,7 @@ public class DiscordMessageContent {
         List<Set<String>> actions = new ArrayList<>();
         List<MessageEmbed> list = new ArrayList<>();
         Set<String> embeddedAttachments = new HashSet<>();
-        EmbedBuilder embed = new EmbedBuilder().setAuthor(authorName, null, authorIconUrl).setColor(color).setThumbnail(thumbnail).setTitle(title);
+        EmbedBuilder embed = new EmbedBuilder().setAuthor(authorName, null, authorIconUrl).setColor(color).setThumbnail(thumbnail).setTitle(title).setTimestamp(timestamp);
         if (thumbnail != null && thumbnail.startsWith("attachment://")) {
             embeddedAttachments.add(thumbnail.substring(13));
         }
