@@ -1,5 +1,5 @@
 /*
- * This file is part of InteractiveChatDiscordSrvAddon-Abstraction.
+ * This file is part of InteractiveChatDiscordSrvAddon2.
  *
  * Copyright (C) 2020 - 2025. LoohpJames <jamesloohp@gmail.com>
  * Copyright (C) 2020 - 2025. Contributors
@@ -37,7 +37,8 @@ public enum EquipmentSlotGroup {
     CHEST("chest", EquipmentSlot.CHEST),
     HEAD("head", EquipmentSlot.HEAD),
     ARMOR("armor", EquipmentSlot.FEET, EquipmentSlot.LEGS, EquipmentSlot.CHEST, EquipmentSlot.HEAD),
-    BODY("body");
+    BODY("body"),
+    SADDLE("saddle");
 
     private final String name;
     private final List<EquipmentSlot> slots;

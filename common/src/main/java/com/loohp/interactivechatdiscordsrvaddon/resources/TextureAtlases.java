@@ -1,5 +1,5 @@
 /*
- * This file is part of InteractiveChatDiscordSrvAddon.
+ * This file is part of InteractiveChatDiscordSrvAddon2.
  *
  * Copyright (C) 2020 - 2025. LoohpJames <jamesloohp@gmail.com>
  * Copyright (C) 2020 - 2025. Contributors
@@ -20,11 +20,14 @@
 
 package com.loohp.interactivechatdiscordsrvaddon.resources;
 
+import com.loohp.interactivechat.libs.net.kyori.adventure.key.Key;
 import com.loohp.interactivechat.libs.org.apache.commons.io.input.BOMInputStream;
 import com.loohp.interactivechat.libs.org.json.simple.JSONArray;
 import com.loohp.interactivechat.libs.org.json.simple.JSONObject;
 import com.loohp.interactivechat.libs.org.json.simple.parser.JSONParser;
 import com.loohp.interactivechatdiscordsrvaddon.graphics.ImageUtils;
+import com.loohp.interactivechatdiscordsrvaddon.registry.ResourceRegistry;
+import com.loohp.interactivechatdiscordsrvaddon.utils.KeyUtils;
 
 import java.awt.image.BufferedImage;
 import java.io.InputStreamReader;
@@ -222,38 +225,52 @@ public class TextureAtlases {
 
     public static final class TextureAtlasSourceType<T extends TextureAtlasSource> {
 
-        public static final TextureAtlasSourceType<TextureAtlasDirectorySource> DIRECTORY = new TextureAtlasSourceType<>("directory", TextureAtlasDirectorySource.class);
-        public static final TextureAtlasSourceType<TextureAtlasSingleSource> SINGLE = new TextureAtlasSourceType<>("single", TextureAtlasSingleSource.class);
-        public static final TextureAtlasSourceType<TextureAtlasFilterSource> FILTER = new TextureAtlasSourceType<>("filter", TextureAtlasFilterSource.class);
-        public static final TextureAtlasSourceType<TextureAtlasUnstitchSource> UNSTITCH = new TextureAtlasSourceType<>("unstitch", TextureAtlasUnstitchSource.class);
-        public static final TextureAtlasSourceType<TextureAtlasPalettedPermutationsSource> PALETTED_PERMUTATIONS = new TextureAtlasSourceType<>("paletted_permutations", TextureAtlasPalettedPermutationsSource.class);
+        public static final TextureAtlasSourceType<TextureAtlasDirectorySource> DIRECTORY = new TextureAtlasSourceType<>("directory", true, TextureAtlasDirectorySource.class);
+        public static final TextureAtlasSourceType<TextureAtlasSingleSource> SINGLE = new TextureAtlasSourceType<>("single", false, TextureAtlasSingleSource.class);
+        public static final TextureAtlasSourceType<TextureAtlasFilterSource> FILTER = new TextureAtlasSourceType<>("filter", false, TextureAtlasFilterSource.class);
+        public static final TextureAtlasSourceType<TextureAtlasUnstitchSource> UNSTITCH = new TextureAtlasSourceType<>("unstitch", false, TextureAtlasUnstitchSource.class);
+        public static final TextureAtlasSourceType<TextureAtlasPalettedPermutationsSource> PALETTED_PERMUTATIONS = new TextureAtlasSourceType<>("paletted_permutations", false, TextureAtlasPalettedPermutationsSource.class);
 
-        private static final Map<String, TextureAtlasSourceType<?>> TYPES;
+        private static final Map<Key, TextureAtlasSourceType<?>> TYPES;
 
         static {
-            Map<String, TextureAtlasSourceType<?>> types = new HashMap<>();
-            types.put(DIRECTORY.name(), DIRECTORY);
-            types.put(SINGLE.name(), SINGLE);
-            types.put(FILTER.name(), FILTER);
-            types.put(UNSTITCH.name(), UNSTITCH);
-            types.put(PALETTED_PERMUTATIONS.name(), PALETTED_PERMUTATIONS);
+            Map<Key, TextureAtlasSourceType<?>> types = new HashMap<>();
+            types.put(DIRECTORY.getKey(), DIRECTORY);
+            types.put(SINGLE.getKey(), SINGLE);
+            types.put(FILTER.getKey(), FILTER);
+            types.put(UNSTITCH.getKey(), UNSTITCH);
+            types.put(PALETTED_PERMUTATIONS.getKey(), PALETTED_PERMUTATIONS);
             TYPES = Collections.unmodifiableMap(types);
         }
 
-        public static Map<String, TextureAtlasSourceType<?>> types() {
+        public static Map<Key, TextureAtlasSourceType<?>> types() {
             return TYPES;
         }
 
-        private final String name;
+        private final Key key;
+        private final boolean appliesAcrossNamespaces;
         private final Class<T> typeClass;
 
-        private TextureAtlasSourceType(String name, Class<T> typeClass) {
-            this.name = name;
+        private TextureAtlasSourceType(Key key, boolean appliesAcrossNamespaces, Class<T> typeClass) {
+            this.key = key;
+            this.appliesAcrossNamespaces = appliesAcrossNamespaces;
             this.typeClass = typeClass;
         }
 
+        private TextureAtlasSourceType(String key, boolean appliesAcrossNamespaces, Class<T> typeClass) {
+            this(KeyUtils.toKey(key), appliesAcrossNamespaces, typeClass);
+        }
+
+        public Key getKey() {
+            return key;
+        }
+
         public String name() {
-            return name;
+            return key.asString();
+        }
+
+        public boolean appliesAcrossNamespaces() {
+            return appliesAcrossNamespaces;
         }
 
         @Override
@@ -262,20 +279,22 @@ public class TextureAtlases {
         }
 
         public static TextureAtlasSourceType<?> fromName(String name) {
-            return TYPES.get(name.toLowerCase());
+            if (!name.contains(":")) {
+                name = ResourceRegistry.DEFAULT_NAMESPACE + ":" + name;
+            }
+            return TYPES.get(KeyUtils.toKey(name.toLowerCase()));
         }
 
         @Override
         public boolean equals(Object o) {
-            if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             TextureAtlasSourceType<?> that = (TextureAtlasSourceType<?>) o;
-            return name.equals(that.name) && typeClass.equals(that.typeClass);
+            return appliesAcrossNamespaces == that.appliesAcrossNamespaces && Objects.equals(key, that.key) && Objects.equals(typeClass, that.typeClass);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(name, typeClass);
+            return Objects.hash(key, typeClass, appliesAcrossNamespaces);
         }
     }
 

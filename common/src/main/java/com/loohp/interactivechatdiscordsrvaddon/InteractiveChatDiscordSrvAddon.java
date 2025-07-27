@@ -1,5 +1,5 @@
 /*
- * This file is part of InteractiveChatDiscordSrvAddon.
+ * This file is part of InteractiveChatDiscordSrvAddon2.
  *
  * Copyright (C) 2020 - 2025. LoohpJames <jamesloohp@gmail.com>
  * Copyright (C) 2020 - 2025. Contributors
@@ -24,6 +24,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.loohp.interactivechat.InteractiveChat;
 import com.loohp.interactivechat.api.events.InteractiveChatConfigReloadEvent;
 import com.loohp.interactivechat.config.Config;
+import com.loohp.interactivechat.libs.com.loohp.platformscheduler.Scheduler;
 import com.loohp.interactivechat.libs.net.kyori.adventure.text.Component;
 import com.loohp.interactivechat.libs.org.json.simple.JSONObject;
 import com.loohp.interactivechat.libs.org.json.simple.parser.JSONParser;
@@ -59,7 +60,7 @@ import com.loohp.interactivechatdiscordsrvaddon.resources.PackFormat;
 import com.loohp.interactivechatdiscordsrvaddon.resources.ResourceLoadingException;
 import com.loohp.interactivechatdiscordsrvaddon.resources.ResourceManager;
 import com.loohp.interactivechatdiscordsrvaddon.resources.ResourceManager.ModManagerSupplier;
-import com.loohp.interactivechatdiscordsrvaddon.resources.ResourcePackInfo;
+import com.loohp.interactivechatdiscordsrvaddon.resources.ResourcePackSource;
 import com.loohp.interactivechatdiscordsrvaddon.resources.ResourcePackType;
 import com.loohp.interactivechatdiscordsrvaddon.resources.fonts.FontManager;
 import com.loohp.interactivechatdiscordsrvaddon.resources.fonts.FontTextureResource;
@@ -382,24 +383,24 @@ public class InteractiveChatDiscordSrvAddon extends JavaPlugin implements Listen
         ThreadFactory factory = new ThreadFactoryBuilder().setNameFormat("InteractiveChatDiscordSRVAddon Async Media Reading Thread #%d").build();
         mediaReadingService = Executors.newFixedThreadPool(4, factory);
 
-        Bukkit.getScheduler().runTaskTimerAsynchronously(this, () -> {
+        Scheduler.runTaskTimerAsynchronously(this, () -> {
             for (ICPlayer player : ICPlayerFactory.getOnlineICPlayers()) {
                 cachePlayerSkin(player);
             }
             AssetsDownloader.loadExtras();
         }, 600, 6000);
 
-        Bukkit.getScheduler().runTask(this, () -> placeholderCooldownManager = new PlaceholderCooldownManager());
+        Scheduler.runTask(this, () -> placeholderCooldownManager = new PlaceholderCooldownManager());
     }
 
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
-        Bukkit.getScheduler().runTaskLaterAsynchronously(this, () -> cachePlayerSkin(ICPlayerFactory.getICPlayer(event.getPlayer())), 40);
+        Scheduler.runTaskLaterAsynchronously(this, () -> cachePlayerSkin(ICPlayerFactory.getICPlayer(event.getPlayer())), 40);
     }
 
     @EventHandler
     public void onInteractiveChatReload(InteractiveChatConfigReloadEvent event) {
-        Bukkit.getScheduler().runTaskLater(this, () -> placeholderCooldownManager.reloadPlaceholders(), 5);
+        Scheduler.runTaskLater(this, () -> placeholderCooldownManager.reloadPlaceholders(), 5);
     }
 
     private void cachePlayerSkin(ICPlayer player) {
@@ -648,7 +649,7 @@ public class InteractiveChatDiscordSrvAddon extends JavaPlugin implements Listen
             senders = receivers;
         }
 
-        Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
+        Scheduler.runTaskAsynchronously(this, () -> {
             try {
                 if (!resourceReloadLock.tryLock(0, TimeUnit.MILLISECONDS)) {
                     sendMessage(ChatColor.YELLOW + "Resource reloading already in progress!", senders);
@@ -661,7 +662,7 @@ public class InteractiveChatDiscordSrvAddon extends JavaPlugin implements Listen
             try {
                 isReady = false;
                 if (InteractiveChatDiscordSrvAddon.plugin.isResourceManagerReady()) {
-                    Bukkit.getScheduler().callSyncMethod(plugin, () -> {
+                    Scheduler.callSyncMethod(plugin, () -> {
                         InteractiveChatDiscordSrvAddon.plugin.getResourceManager().close();
                         return null;
                     }).get();
@@ -755,55 +756,35 @@ public class InteractiveChatDiscordSrvAddon extends JavaPlugin implements Listen
                 });
 
                 Bukkit.getConsoleSender().sendMessage(ChatColor.AQUA + "[ICDiscordSrvAddon] Loading \"Default\" resources...");
-                resourceManager.loadResources(new File(getDataFolder() + "/built-in", "Default"), ResourcePackType.BUILT_IN, true);
+                List<ResourcePackSource> sources = new ArrayList<>();
+                sources.add(ResourcePackSource.ofDefault("Default", new File(getDataFolder() + "/built-in", "Default"), ResourcePackType.BUILT_IN));
                 for (String resourceName : resourceOrder) {
-                    try {
-                        Bukkit.getConsoleSender().sendMessage(ChatColor.AQUA + "[ICDiscordSrvAddon] Loading \"" + resourceName + "\" resources...");
-                        File resourcePackFile = new File(getDataFolder(), "resourcepacks/" + resourceName);
-                        ResourcePackInfo info = resourceManager.loadResources(resourcePackFile, ResourcePackType.LOCAL);
-                        if (info.getStatus()) {
-                            if (info.compareServerPackFormat(ResourceRegistry.RESOURCE_PACK_VERSION) > 0) {
-                                sendMessage(ChatColor.YELLOW + "[ICDiscordSrvAddon] Warning: \"" + resourceName + "\" was made for a newer version of Minecraft!", senders);
-                            } else if (info.compareServerPackFormat(ResourceRegistry.RESOURCE_PACK_VERSION) < 0) {
-                                sendMessage(ChatColor.YELLOW + "[ICDiscordSrvAddon] Warning: \"" + resourceName + "\" was made for an older version of Minecraft!", senders);
-                            }
-                        } else {
-                            if (info.getRejectedReason() == null) {
-                                sendMessage(ChatColor.RED + "[ICDiscordSrvAddon] Unable to load \"" + resourceName + "\"", senders);
-                            } else {
-                                sendMessage(ChatColor.RED + "[ICDiscordSrvAddon] Unable to load \"" + resourceName + "\", Reason: " + info.getRejectedReason(), senders);
-                            }
-                        }
-                    } catch (Exception e) {
-                        sendMessage(ChatColor.RED + "[ICDiscordSrvAddon] Unable to load \"" + resourceName + "\"", senders);
-                        e.printStackTrace();
-                    }
+                    Bukkit.getConsoleSender().sendMessage(ChatColor.AQUA + "[ICDiscordSrvAddon] Loading \"" + resourceName + "\" resources...");
+                    sources.add(ResourcePackSource.ofCustom(resourceName, new File(getDataFolder(), "resourcepacks/" + resourceName), ResourcePackType.LOCAL));
                 }
                 if (includeServerResourcePack && serverResourcePack != null && serverResourcePack.exists()) {
                     String resourceName = serverResourcePack.getName();
-                    try {
-                        Bukkit.getConsoleSender().sendMessage(ChatColor.AQUA + "[ICDiscordSrvAddon] Loading \"" + resourceName + "\" resources...");
-                        ResourcePackInfo info = resourceManager.loadResources(serverResourcePack, ResourcePackType.SERVER);
-                        if (info.getStatus()) {
-                            if (info.compareServerPackFormat(ResourceRegistry.RESOURCE_PACK_VERSION) > 0) {
-                                sendMessage(ChatColor.YELLOW + "[ICDiscordSrvAddon] Warning: \"" + resourceName + "\" was made for a newer version of Minecraft!", senders);
-                            } else if (info.compareServerPackFormat(ResourceRegistry.RESOURCE_PACK_VERSION) < 0) {
-                                sendMessage(ChatColor.YELLOW + "[ICDiscordSrvAddon] Warning: \"" + resourceName + "\" was made for an older version of Minecraft!", senders);
-                            }
-                        } else {
-                            if (info.getRejectedReason() == null) {
-                                sendMessage(ChatColor.RED + "[ICDiscordSrvAddon] Unable to load \"" + resourceName + "\"", senders);
-                            } else {
-                                sendMessage(ChatColor.RED + "[ICDiscordSrvAddon] Unable to load \"" + resourceName + "\", Reason: " + info.getRejectedReason(), senders);
-                            }
-                        }
-                    } catch (Exception e) {
-                        sendMessage(ChatColor.RED + "[ICDiscordSrvAddon] Unable to load \"" + resourceName + "\"", senders);
-                        e.printStackTrace();
-                    }
+                    Bukkit.getConsoleSender().sendMessage(ChatColor.AQUA + "[ICDiscordSrvAddon] Loading \"" + resourceName + "\" resources...");
+                    sources.add(ResourcePackSource.ofCustom(resourceName, serverResourcePack, ResourcePackType.SERVER));
                 }
+                resourceManager.loadResources(sources, (source, info) -> {
+                    String resourceName = source.getName();
+                    if (info.getStatus()) {
+                        if (info.compareServerPackFormat(ResourceRegistry.RESOURCE_PACK_VERSION) > 0) {
+                            sendMessage(ChatColor.YELLOW + "[ICDiscordSrvAddon] Warning: \"" + resourceName + "\" was made for a newer version of Minecraft!", senders);
+                        } else if (info.compareServerPackFormat(ResourceRegistry.RESOURCE_PACK_VERSION) < 0) {
+                            sendMessage(ChatColor.YELLOW + "[ICDiscordSrvAddon] Warning: \"" + resourceName + "\" was made for an older version of Minecraft!", senders);
+                        }
+                    } else {
+                        if (info.getRejectedReason() == null) {
+                            sendMessage(ChatColor.RED + "[ICDiscordSrvAddon] Unable to load \"" + resourceName + "\"", senders);
+                        } else {
+                            sendMessage(ChatColor.RED + "[ICDiscordSrvAddon] Unable to load \"" + resourceName + "\", Reason: " + info.getRejectedReason(), senders);
+                        }
+                    }
+                });
 
-                Bukkit.getScheduler().callSyncMethod(plugin, () -> {
+                Scheduler.callSyncMethod(plugin, () -> {
                     InteractiveChatDiscordSrvAddon.plugin.resourceManager = resourceManager;
 
                     if (resourceManager.getResourcePackInfo().stream().allMatch(each -> each.getStatus())) {

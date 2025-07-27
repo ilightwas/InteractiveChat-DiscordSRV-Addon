@@ -1,5 +1,5 @@
 /*
- * This file is part of InteractiveChatDiscordSrvAddon-V1_20_3.
+ * This file is part of InteractiveChatDiscordSrvAddon2.
  *
  * Copyright (C) 2020 - 2025. LoohpJames <jamesloohp@gmail.com>
  * Copyright (C) 2020 - 2025. Contributors
@@ -32,6 +32,7 @@ import com.loohp.interactivechat.objectholders.ICMaterial;
 import com.loohp.interactivechat.utils.InteractiveChatComponentSerializer;
 import com.loohp.interactivechatdiscordsrvaddon.objectholders.AdvancementData;
 import com.loohp.interactivechatdiscordsrvaddon.objectholders.AdvancementType;
+import com.loohp.interactivechatdiscordsrvaddon.objectholders.AttributeBase;
 import com.loohp.interactivechatdiscordsrvaddon.objectholders.BiomePrecipitation;
 import com.loohp.interactivechatdiscordsrvaddon.objectholders.CustomModelData;
 import com.loohp.interactivechatdiscordsrvaddon.objectholders.DimensionManager;
@@ -65,7 +66,6 @@ import net.minecraft.world.effect.MobEffectList;
 import net.minecraft.world.entity.EntityLiving;
 import net.minecraft.world.entity.EnumItemSlot;
 import net.minecraft.world.entity.EnumMonsterType;
-import net.minecraft.world.entity.ai.attributes.AttributeBase;
 import net.minecraft.world.entity.projectile.EntityFishingHook;
 import net.minecraft.world.item.ArmorMaterial;
 import net.minecraft.world.item.BundleItem;
@@ -306,23 +306,24 @@ public class V1_20_3 extends NMSAddonWrapper {
     }
 
     @Override
-    public ChatColor getPotionEffectChatColor(PotionEffectType type) {
-        MobEffectList mobEffectList = ((CraftPotionEffectType) type).getHandle();
+    public TextColor getPotionEffectChatColor(PotionEffectType type) {
+        MobEffectList mobEffectList = CraftPotionEffectType.bukkitToMinecraft(type);
         EnumChatFormat chatFormat = mobEffectList.f().a();
-        return ChatColor.getByChar(chatFormat.toString().charAt(1));
+        return TextColor.color(chatFormat.f());
     }
 
     @Override
-    public Map<String, AttributeModifier> getPotionAttributeModifiers(PotionEffect effect) {
-        Map<String, AttributeModifier> attributes = new HashMap<>();
+    public Map<AttributeBase, AttributeModifier> getPotionAttributeModifiers(PotionEffect effect) {
+        Map<AttributeBase, AttributeModifier> attributes = new HashMap<>();
         MobEffect mobEffect = CraftPotionUtil.fromBukkit(effect);
         MobEffectList mobEffectList = mobEffect.c();
-        Map<AttributeBase, AttributeModifierTemplate> nmsMap = mobEffectList.h();
-        for (Map.Entry<AttributeBase, AttributeModifierTemplate> entry : nmsMap.entrySet()) {
-            String name = entry.getKey().c();
+        Map<net.minecraft.world.entity.ai.attributes.AttributeBase, AttributeModifierTemplate> nmsMap = mobEffectList.h();
+        for (Map.Entry<net.minecraft.world.entity.ai.attributes.AttributeBase, AttributeModifierTemplate> entry : nmsMap.entrySet()) {
+            net.minecraft.world.entity.ai.attributes.AttributeBase nmsAttributeBase = entry.getKey();
+            AttributeBase attributeBase = new AttributeBase(nmsAttributeBase.c(), nmsAttributeBase.b());
             AttributeModifierTemplate template = entry.getValue();
             AttributeModifier attributeModifier = CraftAttributeInstance.convert(template.a(effect.getAmplifier()));
-            attributes.put(name, attributeModifier);
+            attributes.put(attributeBase, attributeModifier);
         }
         return attributes;
     }
@@ -495,17 +496,18 @@ public class V1_20_3 extends NMSAddonWrapper {
     }
 
     @Override
-    public Map<EquipmentSlotGroup, Multimap<String, AttributeModifier>> getItemAttributeModifiers(ItemStack itemStack) {
+    public Map<EquipmentSlotGroup, Multimap<AttributeBase, AttributeModifier>> getItemAttributeModifiers(ItemStack itemStack) {
         net.minecraft.world.item.ItemStack nmsItemStack = CraftItemStack.asNMSCopy(itemStack);
-        Map<EquipmentSlotGroup, Multimap<String, AttributeModifier>> result = new EnumMap<>(EquipmentSlotGroup.class);
+        Map<EquipmentSlotGroup, Multimap<AttributeBase, AttributeModifier>> result = new EnumMap<>(EquipmentSlotGroup.class);
         for (EnumItemSlot slot : EnumItemSlot.values()) {
             EquipmentSlotGroup equipmentSlotGroup = EquipmentSlotGroup.forEquipmentSlot(CraftEquipmentSlot.getSlot(slot));
-            Multimap<AttributeBase, net.minecraft.world.entity.ai.attributes.AttributeModifier> nmsMap = nmsItemStack.a(slot);
-            for (Map.Entry<AttributeBase, net.minecraft.world.entity.ai.attributes.AttributeModifier> entry : nmsMap.entries()) {
-                Multimap<String, AttributeModifier> attributes = result.computeIfAbsent(equipmentSlotGroup, k -> LinkedHashMultimap.create());
-                String name = entry.getKey().c();
+            Multimap<net.minecraft.world.entity.ai.attributes.AttributeBase, net.minecraft.world.entity.ai.attributes.AttributeModifier> nmsMap = nmsItemStack.a(slot);
+            for (Map.Entry<net.minecraft.world.entity.ai.attributes.AttributeBase, net.minecraft.world.entity.ai.attributes.AttributeModifier> entry : nmsMap.entries()) {
+                Multimap<AttributeBase, AttributeModifier> attributes = result.computeIfAbsent(equipmentSlotGroup, k -> LinkedHashMultimap.create());
+                net.minecraft.world.entity.ai.attributes.AttributeBase nmsAttributeBase = entry.getKey();
+                AttributeBase attributeBase = new AttributeBase(nmsAttributeBase.c(), nmsAttributeBase.b());
                 AttributeModifier attributeModifier = CraftAttributeInstance.convert(entry.getValue());
-                attributes.put(name, attributeModifier);
+                attributes.put(attributeBase, attributeModifier);
             }
         }
         return result;
@@ -756,6 +758,21 @@ public class V1_20_3 extends NMSAddonWrapper {
     @Override
     public boolean shouldShowOperatorBlockWarnings(ItemStack itemStack, Player player) {
         return false;
+    }
+
+    @Override
+    public Object getItemStackDataComponentValue(ItemStack itemStack, Key component) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Object serializeDataComponent(Key component, String data) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean evaluateComponentPredicateOnItemStack(ItemStack itemStack, String predicateData, String data) {
+        throw new UnsupportedOperationException();
     }
 
 }
